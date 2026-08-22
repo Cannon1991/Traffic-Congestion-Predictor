@@ -76,7 +76,7 @@ selected_weather = st.sidebar.selectbox("Current Weather Forecast:", weathers)
 
 if st.sidebar.button("🔮 Predict Congestion Level"):
     input_data = pd.DataFrame([{'Route': selected_route, 'DayOfWeek': selected_day, 'Hour': selected_hour, 'Weather': selected_weather}])
-    score_pred = pipeline.predict(input_data)
+    score_pred = pipeline.predict(input_data)[0]
     
     if score_pred < 40:
         status, color = "🟢 Low Congestion", "green"
@@ -101,34 +101,33 @@ if st.sidebar.button("🔮 Predict Congestion Level"):
             
             st.error(f"⚠️ **CRITICAL FLOODING RISK:** The '{selected_route}' corridor is highly vulnerable to coastal flash floods during heavy downpours. High vehicle pooling and severe lane submergence are expected.")
             
-            # NEW FEATURE: Interactive Check Boxes inside the Checklist Window
             st.markdown("### 📋 Wet Weather Safety Checklist")
-            st.caption("Please review and verify each safety step before departing:")
-            
-            chk_speed = st.checkbox("📉 **Reduce Speed:** Speed dropped below 40 km/h to maintain road traction.")
-            chk_vis = st.checkbox("💡 **Boost Visibility:** Low-beam headlights and hazard indicators are switched on.")
-            chk_dist = st.checkbox("🚗 **Increase Distance:** Following space widened to at least 4 vehicle lengths.")
-            chk_wade = st.checkbox("🛑 **Do Not Wade:** Confirmed that water depth does not cover wheel centers.")
-            
-            if chk_speed and chk_vis and chk_dist and chk_wade:
-                st.success("✅ **Checklist Complete!** Drive safely and maintain high alertness on the road.")
+            st.markdown("""
+            * 📉 **Reduce Speed:** Drop your speed below 40 km/h to maintain traction and prevent hydroplaning.
+            * 💡 **Boost Visibility:** Turn on low-beam headlights and hazard lights immediately.
+            * 🚗 **Increase Distance:** Double your following distance to at least 4 vehicle lengths.
+            * 🛑 **Do Not Wade:** If water levels look deeper than the center of your wheels, do not attempt to cross.
+            """)
             
             # Interactive alternative suggestion box container
             with st.expander("🔄 **Interactive Detour Recommendation Available**", expanded=True):
                 st.info(f"💡 **Recommended Safer Route:** Consider switching to **{alt_route}**. This corridor has better structural drainage elevations and lower flooding probabilities.")
                 
                 alt_input = pd.DataFrame([{'Route': alt_route, 'DayOfWeek': selected_day, 'Hour': selected_hour, 'Weather': selected_weather}])
-                alt_score = pipeline.predict(alt_input)
+                alt_score = pipeline.predict(alt_input)[0]
                 
+                # Dynamic travel time computation logic
                 orig_base_time = base_travel_times.get(selected_route, 25)
                 alt_base_time = base_travel_times.get(alt_route, 25)
                 
+                # Total travel time modeled by base duration scaled exponentially by congestion percentage
                 orig_total_time = orig_base_time * (1 + (score_pred / 100.0) * 1.5)
-                alt_total_time = alt_base_time * (1 + (alt_score / 100.0) * 1.1)
+                alt_total_time = alt_base_time * (1 + (alt_score / 100.0) * 1.1) # Alternative routes scale slower due to lower flood delays
                 
                 time_diff = alt_total_time - orig_total_time
                 time_diff_abs = abs(time_diff)
                 
+                # Visual Metric Columns for side-by-side comparison
                 mc1, mc2 = st.columns(2)
                 mc1.metric(label=f"Predicted Congestion ({alt_route})", value=f"{alt_score:.1f}%", delta=f"{alt_score - score_pred:.1f}% vs Original")
                 
@@ -137,16 +136,13 @@ if st.sidebar.button("🔮 Predict Congestion Level"):
                 else:
                     mc2.metric(label="Estimated Travel Time Impact", value=f"-{int(time_diff_abs)} mins", delta="Faster and flood-free!", delta_color="normal")
         else:
-            st.warning(f"⚠️ **MODERATE FLOODING RISK:** Heavy rain may cause surface water accumulation on portions of '{selected_route}'. Proceed with caution.")
+            st.warning(f"⚠️ **MODERATE FLOODING RISK:** Heavy rain may cause surface water accumulation on portions of '{selected_route}'. Proceed with caution and look out for drainage backups.")
             st.markdown("### 📋 Wet Weather Safety Checklist")
-            st.caption("Please review and verify each safety step before departing:")
-            
-            chk_speed = st.checkbox("📉 **Reduce Speed:** Driving cautiously to handle unexpected water pooling.")
-            chk_vis = st.checkbox("💡 **Boost Visibility:** Windshield wipers and headlights are turned on.")
-            chk_dist = st.checkbox("🚗 **Increase Distance:** Extra braking space left between vehicles.")
-            
-            if chk_speed and chk_vis and chk_dist:
-                st.success("✅ **Precautionary Steps Verified!** Travel safely.")
+            st.markdown("""
+            * 📉 **Reduce Speed:** Drive cautiously to handle unexpected water pooling.
+            * 💡 **Boost Visibility:** Switch on your windshield wipers and headlights.
+            * 🚗 **Increase Distance:** Leave extra braking space between vehicles.
+            """)
         st.markdown("---")
     
     st.subheader("📈 24-Hour Congestion Trend Curve")
